@@ -2,6 +2,7 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { privateProcedure, publicProcedure, router } from "./trpc";
 import { TRPCError } from "@trpc/server";
 import { db } from "@/db";
+import { z } from 'zod'
 export const appRouter = router({
   authCallback: publicProcedure.query(async () => {
     const { getUser } = getKindeServerSession();
@@ -22,9 +23,9 @@ export const appRouter = router({
             stripeCustomerId: "your_stripe_customer_id_here"
           }
         });
-      }      
+      }
     }
-    
+
 
     return { success: true };
   }),
@@ -37,6 +38,22 @@ export const appRouter = router({
       },
     })
   }),
-});
+  deleteFile: privateProcedure.input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { userId } = ctx
+      const file = await db.file.findFirst({
+        where: {
+          id: input.id,
+          userId
+        }
+      })
+      if (!file) throw new TRPCError({ code: "NOT_FOUND" })
+      await db.file.delete({
+        where: {
+          id: input.id
+        }
+      })
+    })
+})
 
 export type AppRouter = typeof appRouter;
